@@ -2,7 +2,8 @@ package com.picpaySimplificado.services;
 
 import com.picpaySimplificado.domain.transaction.Transaction;
 import com.picpaySimplificado.domain.user.User;
-import com.picpaySimplificado.dtos.TransactionDTO;
+import com.picpaySimplificado.dtos.TransactionRequestDTO;
+import com.picpaySimplificado.dtos.TransactionResponseDTO;
 import com.picpaySimplificado.repositories.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,8 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 public class TransactionService {
@@ -20,21 +21,23 @@ public class TransactionService {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private NotificationService notificationService;
 
     @Autowired
     private RestTemplate restTemplate;
 
-    public void createTransaction(TransactionDTO transactionDTO) throws Exception {
-        User sender = userService.findUserById(transactionDTO.senderId());
-        userService.validateTransaction(sender, transactionDTO.amount());
+    public TransactionResponseDTO createTransaction(TransactionRequestDTO transactionRequestDTO) throws Exception {
+        User sender = userService.findUserById(transactionRequestDTO.senderId());
+        userService.validateTransaction(sender, transactionRequestDTO.amount());
 
         boolean isAuthorized = authorizeTransaction();
         if (!isAuthorized) {
             throw new Exception("Transação não autorizada!");
         }
 
-        User receiver = userService.findUserById(transactionDTO.receiverId());
-        Transaction transaction = new Transaction(transactionDTO.amount(), sender, receiver, LocalDateTime.now());
+        User receiver = userService.findUserById(transactionRequestDTO.receiverId());
+        Transaction transaction = new Transaction(transactionRequestDTO.amount(), sender, receiver, LocalDateTime.now());
 
         sender.setBalance(sender.getBalance().subtract(transaction.getAmount()));
         receiver.setBalance(receiver.getBalance().add(transaction.getAmount()));
@@ -42,6 +45,15 @@ public class TransactionService {
         repository.save(transaction);
         userService.saveUser(sender);
         userService.saveUser(receiver);
+
+        notificationService.sendNotification(sender, "Transação realizada com sucesso!");
+        notificationService.sendNotification(receiver, "Transação recebida com sucesso!");
+
+        return new TransactionResponseDTO(transaction.getId(),
+                                          transaction.getAmount(),
+                                          transaction.getSender(),
+                                          transaction.getReceiver(),
+                                          transaction.getTimestamp());
     }
 
     public boolean authorizeTransaction() {
@@ -60,5 +72,11 @@ public class TransactionService {
         }
 
         return false;
+    }
+
+    public List<TransactionResponseDTO> getAllTransactions() {
+        return repository.findAll().stream()
+                .map(t -> new TransactionResponseDTO(t.getId(), t.getAmount(), t.getSender(), t.getReceiver(), t.getTimestamp()))
+                .toList();
     }
 }

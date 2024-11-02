@@ -1,7 +1,7 @@
 package com.picpaySimplificado.domain.user;
 
 import com.picpaySimplificado.domain.base.BaseEntity;
-import com.picpaySimplificado.dtos.UserDTO;
+import com.picpaySimplificado.dtos.UserRequestDTO;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,12 +29,13 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private UserType userType;
 
-    public User(UserDTO userDTO) {
-        this.firstName = userDTO.firstName();
-        this.lastName = userDTO.lastName();
-        this.document = userDTO.document();
-        this.email = userDTO.email();
-        this.password = userDTO.password();
-        this.balance = userDTO.balance();
+    public User(UserRequestDTO userRequestDTO) {
+        this.firstName = userRequestDTO.firstName();
+        this.lastName = userRequestDTO.lastName();
+        this.document = userRequestDTO.document();
+        this.email = userRequestDTO.email();
+        this.password = userRequestDTO.password();
+        this.balance = userRequestDTO.balance();
+        this.userType = userRequestDTO.userType();
     }
 }
